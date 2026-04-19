@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>民泊清掃ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --accent: #c8f060;
+    --accent2: #60c8f0;
+    --text: #f0f0f0;
+    --text2: #888;
+    --danger: #f06060;
+    --success: #60f09a;
+    --warn: #f0c060;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+  .logo { display: flex; align-items: center; gap: 8px; }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .logo-text { font-size: 14px; font-weight: 700; }
+  .logo-sub { font-size: 10px; color: var(--text2); }
+  .progress-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  .progress-pill span { color: var(--accent); font-weight: 700; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-shrink: 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    gap: 3px;
+    cursor: pointer;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+  .nav-item:active { background: var(--surface2); }
+  .nav-item.active .nav-icon { color: var(--accent); }
+  .nav-item.active .nav-label { color: var(--accent); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-label { font-size: 9px; color: var(--text2); font-weight: 500; }
+  .nav-badge {
+    position: absolute;
+    top: 4px; right: calc(50% - 18px);
+    background: var(--danger);
+    color: white;
+    font-size: 9px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 700;
+  }
+  .nav-done {
+    position: absolute;
+    top: 4px; right: calc(50% - 18px);
+    background: var(--success);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* MAIN SCROLL AREA */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .panel { display: none; padding: 16px; }
+  .panel.active { display: block; }
+
+  /* SECTION */
+  .sec-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin: 20px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sec-title:first-child { margin-top: 0; }
+  .sec-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  /* FORM */
+  label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text2);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+  input, textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 12px;
+    font-family: inherit;
+    font-size: 16px; /* 16px prevents zoom on iOS */
+    transition: border-color 0.2s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-group { margin-bottom: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* CHECKLIST AREA */
+  .area-header {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .area-header:active { background: #2e2e2e; }
+  .area-header-left { display: flex; align-items: center; gap: 10px; }
+  .area-emoji { font-size: 20px; }
+  .area-name { font-weight: 700; font-size: 15px; }
+  .area-count { font-size: 11px; color: var(--text2); }
+  .area-chevron { color: var(--text2); font-size: 12px; transition: transform 0.2s; }
+  .area-header.open .area-chevron { transform: rotate(90deg); }
+  .area-header.done .area-name { color: var(--success); }
+  .area-header.done .area-count { color: var(--success); }
+
+  .area-body { display: none; margin-bottom: 12px; }
+  .area-body.open { display: block; }
+
+  /* CHECK ITEM */
+  .check-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: all 0.15s;
+  }
+  .check-item.checked { border-color: rgba(96,240,154,0.3); background: rgba(96,240,154,0.04); }
+  .check-item.warn-item { border-color: rgba(240,192,96,0.3); background: rgba(240,192,96,0.04); }
+  .check-box {
+    width: 26px; height: 26px;
+    border: 2px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    transition: all 0.2s;
+    margin-top: 1px;
+    min-width: 26px;
+  }
+  .check-box.checked { background: var(--success); border-color: var(--success); }
+  .check-box.checked::after { content: '✓'; font-size: 14px; color: #000; font-weight: 900; }
+  .check-content { flex: 1; min-width: 0; }
+  .check-label { font-weight: 600; font-size: 14px; line-height: 1.4; }
+  .check-note {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 3px;
+    display: flex; align-items: flex-start; gap: 4px;
+  }
+  .check-note.warn-note { color: var(--warn); }
+  .check-status-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .status-btn {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 600;
+  }
+  .status-btn:active { transform: scale(0.95); }
+  .status-btn.active-ok { background: rgba(96,240,154,0.2); border-color: var(--success); color: var(--success); }
+  .status-btn.active-ng { background: rgba(240,96,96,0.2); border-color: var(--danger); color: var(--danger); }
+  .status-btn.active-skip { background: rgba(136,136,136,0.2); border-color: #666; color: #aaa; }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    background: var(--border);
+    border-radius: 4px; height: 4px;
+    margin: 8px 0 4px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+  .progress-text { font-size: 11px; color: var(--text2); text-align: right; }
+
+  /* PHOTOS */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .photo-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .photo-slot {
+    aspect-ratio: 1;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface2);
+    transition: border-color 0.2s;
+  }
+  .photo-slot:active { border-color: var(--accent); }
+  .photo-slot img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-slot-icon { font-size: 22px; }
+  .photo-slot-text { font-size: 9px; color: var(--text2); margin-top: 3px; }
+  .photo-remove {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    background: rgba(0,0,0,0.75);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 11px; color: white; z-index: 2;
+    border: none; cursor: pointer;
+  }
+  .photo-label-inp {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 5px 8px;
+    width: 100%;
+    font-family: inherit;
+    outline: none;
+  }
+  .photo-label-inp:focus { border-color: var(--accent); }
+  .photo-label-inp:disabled { opacity: 0.3; }
+
+  /* BILLING */
+  .bill-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .bill-item-name {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    padding: 4px 0;
+    margin-bottom: 8px;
+    outline: none;
+  }
+  .bill-item-name:focus { border-color: var(--accent); }
+  .bill-item-row { display: flex; gap: 8px; align-items: center; }
+  .bill-num-inp {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    padding: 8px;
+    text-align: center;
+    outline: none;
+    width: 60px; flex-shrink: 0;
+  }
+  .bill-num-inp:focus { border-color: var(--accent); }
+  .bill-price-inp {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    padding: 8px;
+    outline: none;
+    flex: 1;
+  }
+  .bill-price-inp:focus { border-color: var(--accent); }
+  .bill-amount { font-size: 15px; font-weight: 700; color: var(--accent); white-space: nowrap; min-width: 70px; text-align: right; }
+  .bill-del-btn { background: transparent; border: none; color: var(--danger); font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+  .bill-unit-label { font-size: 11px; color: var(--text2); flex-shrink: 0; }
+
+  .add-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .add-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  .total-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .total-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .total-row + .total-row { border-top: 1px solid var(--border); }
+  .total-label { font-size: 13px; color: var(--text2); }
+  .total-val { font-size: 14px; }
+  .total-final { padding-top: 10px; margin-top: 4px; border-top: 2px solid var(--border) !important; }
+  .total-final .total-label { font-weight: 700; font-size: 14px; color: var(--text); }
+  .total-final .total-val { font-size: 22px; font-weight: 700; color: var(--accent); }
+
+  /* BUTTONS */
+  .btn {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 14px 20px;
+    border-radius: 10px; border: none;
+    cursor: pointer; font-size: 14px; font-weight: 700;
+    font-family: inherit; transition: all 0.15s;
+    width: 100%;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn + .btn { margin-top: 8px; }
+
+  /* PREVIEW */
+  .preview-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+  .prev-btn {
+    flex: 1; padding: 10px 8px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text2);
+    font-size: 13px; font-weight: 700; font-family: inherit;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .prev-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,240,96,0.08); }
+  .preview-scroll {
+    background: white;
+    border-radius: 12px;
+    overflow: auto;
+    max-height: 55vh;
+    -webkit-overflow-scrolling: touch;
+  }
+  .preview-inner { padding: 20px; color: #1a1a1a; font-size: 12px; }
+  .pv-header { border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 16px; }
+  .pv-title { font-size: 20px; font-weight: 900; }
+  .pv-meta { font-size: 11px; color: #666; margin-top: 4px; line-height: 1.7; }
+  .pv-sec { margin-bottom: 16px; }
+  .pv-sec-title { font-size: 10px; font-weight: 700; background: #1a1a1a; color: white; padding: 3px 10px; border-radius: 4px; display: inline-block; margin-bottom: 8px; letter-spacing: 0.08em; }
+  .pv-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .pv-table th { background: #f5f5f5; padding: 5px 8px; text-align: left; border: 1px solid #e0e0e0; font-size: 10px; color: #555; }
+  .pv-table td { padding: 5px 8px; border: 1px solid #e0e0e0; }
+  .pv-photo { width: 80px; height: 65px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
+  .pv-total { text-align: right; margin-top: 12px; }
+  .pv-total-num { font-size: 22px; font-weight: 900; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface); border: 1px solid var(--accent);
+    color: var(--text); padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; z-index: 999;
+    opacity: 0; transition: all 0.3s; white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* INFO CHIP */
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(96,200,240,0.1); color: var(--accent2);
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid rgba(96,200,240,0.2); margin-bottom: 12px;
+  }
+  .warn-chip {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: rgba(240,192,96,0.1); color: var(--warn);
+    font-size: 12px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid rgba(240,192,96,0.3); margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  /* STOCK SECTION */
+  .stock-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .stock-row:last-child { border-bottom: none; }
+  .stock-name { flex: 1; font-size: 14px; }
+  .stock-loc { font-size: 11px; color: var(--text2); }
+  .stock-check {
+    width: 26px; height: 26px;
+    border: 2px solid var(--border);
+    border-radius: 7px; cursor: pointer;
+    flex-shrink: 0; display: grid; place-items: center;
+    transition: all 0.2s;
+  }
+  .stock-check.ok { background: var(--success); border-color: var(--success); }
+  .stock-check.ok::after { content: '✓'; font-size: 14px; color: #000; font-weight: 900; }
+  .stock-check.ng { background: var(--danger); border-color: var(--danger); }
+  .stock-check.ng::after { content: '!'; font-size: 13px; color: white; font-weight: 900; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🏠</div>
+    <div>
+      <div class="logo-text">民泊清掃ツール</div>
+      <div class="logo-sub">CLEANING REPORT</div>
+    </div>
+  </div>
+  <div class="progress-pill">
+    <span id="hdrDone">0</span>/<span id="hdrTotal">0</span> 完了
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- TAB 0: 基本情報 -->
+  <div class="panel active" id="panel-0">
+    <div class="sec-title">清掃情報</div>
+    <div class="card">
+      <div class="form-group">
+        <label>物件名</label>
+        <input type="text" id="propertyName" placeholder="例: 古民家〇〇" oninput="saveData()">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>清掃日</label>
+          <input type="date" id="cleaningDate" oninput="saveData()">
+        </div>
+        <div class="form-group">
+          <label>スタッフ名</label>
+          <input type="text" id="staffName" placeholder="例: 田中 花子" oninput="saveData()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>開始時刻</label>
+          <input type="time" id="startTime" oninput="saveData()">
+        </div>
+        <div class="form-group">
+          <label>終了時刻</label>
+          <input type="time" id="endTime" oninput="saveData()">
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">依頼者情報</div>
+    <div class="card">
+      <div class="form-group">
+        <label>依頼者名 / 会社名</label>
+        <input type="text" id="clientName" placeholder="例: 山田 一郎" oninput="saveData()">
+      </div>
+      <div class="form-group">
+        <label>請求書宛名</label>
+        <input type="text" id="invoiceTo" placeholder="例: 山田 一郎 様" oninput="saveData()">
+      </div>
+      <div class="form-group">
+        <label>自社名（清掃業者）</label>
+        <input type="text" id="companyName" placeholder="例: クリーンサービス鈴木" oninput="saveData()">
+      </div>
+    </div>
+
+    <div class="sec-title">特記事項</div>
+    <div class="card">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>気になった点・引き継ぎ</label>
+        <textarea id="notes" placeholder="例: 排水溝の汚れが強め。調味料のしょうゆが残り少ない。" oninput="saveData()"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 1: チェックリスト -->
+  <div class="panel" id="panel-1">
+    <div class="chip">📋 マニュアルに基づくチェックリスト</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text" id="progressText" style="margin-bottom:12px;">0 / 0 完了</div>
+    <div id="checklistContainer"></div>
+  </div>
+
+  <!-- TAB 2: 写真 -->
+  <div class="panel" id="panel-2">
+    <div class="chip">📷 清掃後の写真を記録（最大5枚）</div>
+    <div class="card">
+      <div class="photo-grid" id="photoGrid"></div>
+    </div>
+
+    <div class="sec-title">ストック確認</div>
+    <div class="card">
+      <div class="chip" style="margin-bottom:8px;">⚠️ 残少の場合はオーナーに連絡</div>
+      <div id="stockList"></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: 請求 -->
+  <div class="panel" id="panel-3">
+    <div class="sec-title">請求明細</div>
+    <div id="billingList"></div>
+    <button class="add-btn" onclick="addBillingItem()">＋ 項目を追加</button>
+
+    <div class="total-box">
+      <div class="total-row"><div class="total-label">小計</div><div class="total-val" id="subtotalDisplay">¥0</div></div>
+      <div class="total-row"><div class="total-label">消費税（10%）</div><div class="total-val" id="taxDisplay">¥0</div></div>
+      <div class="total-row total-final"><div class="total-label">合計（税込）</div><div class="total-val" id="totalDisplay">¥0</div></div>
+    </div>
+
+    <div class="sec-title" style="margin-top:16px;">振込先</div>
+    <div class="card">
+      <div class="form-group">
+        <label>銀行・支店名</label>
+        <input type="text" id="bankName" placeholder="例: 〇〇銀行 渋谷支店" oninput="saveData()">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>口座番号</label>
+          <input type="text" id="bankAccount" placeholder="普通 1234567" oninput="saveData()">
+        </div>
+        <div class="form-group">
+          <label>口座名義</label>
+          <input type="text" id="bankHolder" placeholder="スズキ ハナコ" oninput="saveData()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>支払期限</label>
+          <input type="date" id="paymentDue" oninput="saveData()">
+        </div>
+        <div class="form-group">
+          <label>請求書番号</label>
+          <input type="text" id="invoiceNo" oninput="saveData()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: 出力 -->
+  <div class="panel" id="panel-4">
+    <div class="preview-toggle">
+      <button class="prev-btn active" id="prevR" onclick="renderPreview('report')">📋 報告書</button>
+      <button class="prev-btn" id="prevI" onclick="renderPreview('invoice')">🧾 請求書</button>
+    </div>
+    <div class="preview-scroll">
+      <div class="preview-inner" id="previewArea">
+        <div style="color:#aaa;text-align:center;padding:40px 0;">プレビューを読み込み中...</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-primary" onclick="downloadPDF('report')">⬇️ 報告書 PDF 出力</button>
+      <button class="btn btn-secondary" onclick="downloadPDF('invoice')">⬇️ 請求書 PDF 出力</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab(0)" id="nav0">
+    <div class="nav-icon">📝</div>
+    <div class="nav-label">基本情報</div>
+  </div>
+  <div class="nav-item" onclick="switchTab(1)" id="nav1">
+    <div class="nav-icon">✅</div>
+    <div class="nav-label">チェック</div>
+  </div>
+  <div class="nav-item" onclick="switchTab(2)" id="nav2">
+    <div class="nav-icon">📷</div>
+    <div class="nav-label">写真</div>
+  </div>
+  <div class="nav-item" onclick="switchTab(3)" id="nav3">
+    <div class="nav-icon">💴</div>
+    <div class="nav-label">請求</div>
+  </div>
+  <div class="nav-item" onclick="switchTab(4)" id="nav4">
+    <div class="nav-icon">📤</div>
+    <div class="nav-label">出力</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+
+<script>
+// ============================================================
+// マニュアルデータ (PDFから抽出)
+// ============================================================
+const CHECKLIST = [
+  { id:'genkan', area:'玄関', emoji:'🚪', items:[
+    { id:'g1', label:'入り口のゴミ拾い', note:'入り口にゴミがあったら拾う' },
+    { id:'g2', label:'玄関を掃く', note:'◎履く' },
+    { id:'g3', label:'スリッパを並べる', note:'◎スリッパ並べる' },
+    { id:'g4', label:'飾り物の確認・撮影', note:'⚠️ 無くなっているものがないか確認・写真撮影', warn:true },
+  ]},
+  { id:'kitchen1', area:'キッチン①（家電）', emoji:'🍳', items:[
+    { id:'k1', label:'冷蔵庫：残り物を捨てる', note:'◎残り物捨てる' },
+    { id:'k2', label:'冷蔵庫：汚れがあれば拭く', note:'◎汚れあれば拭く' },
+    { id:'k3', label:'電磁レンジ：汚れを拭く', note:'◎汚れあれば拭く' },
+    { id:'k4', label:'トースター：汚れを拭く', note:'◎汚れあれば拭く' },
+    { id:'k5', label:'トースター：アルミホイルでカバー', note:'◎アルミホイルでカバー' },
+    { id:'k6', label:'調味料：切れそうな時補充', note:'⚠️ ストック無くなりそうなとき連絡', warn:true },
+  ]},
+  { id:'kitchen2', area:'キッチン②（シンク・食器）', emoji:'🫧', items:[
+    { id:'k7', label:'シンク：汚れを磨く', note:'◎汚れ磨く' },
+    { id:'k8', label:'シンク：スポンジを新品に交換', note:'上の棚にあります' },
+    { id:'k9', label:'三角コーナー：ゴミ捨て', note:'◎ゴミ捨て' },
+    { id:'k10', label:'三角コーナー：水切りネットをかける', note:'上の棚にあります' },
+    { id:'k11', label:'排水溝：ゴミ捨て', note:'◎ゴミ捨て' },
+    { id:'k12', label:'排水溝：水切りネットをかける', note:'上の棚にあります' },
+    { id:'k13', label:'手拭きタオル：交換・洗濯', note:'2F棚にあります' },
+    { id:'k14', label:'水切り：汚れを磨く・水分拭く', note:'◎汚れ磨く ◎水分拭く' },
+    { id:'k15', label:'食器：食器棚に戻す', note:'⚠️ このお皿は後が残りやすいので要注意', warn:true },
+    { id:'k16', label:'食器棚：乱れ・汚れ確認、並べる', note:'◎乱れ確認 ◎汚れ確認 ◎並べる' },
+  ]},
+  { id:'kitchen3', area:'キッチン③（器具・ゴミ）', emoji:'🥄', items:[
+    { id:'k17', label:'水：1本セット', note:'1F/7.5畳押入れに入っています。ストック確認' },
+    { id:'k18', label:'炊飯器：汚れチェック・洗う・水切り', note:'◎汚れチェック ◎汚れてたら洗う ◎水を切って戻す' },
+    { id:'k19', label:'調理器具：汚れチェック・洗う・水切り', note:'◎汚れチェック ◎汚れてたら洗う ◎水を切って戻す' },
+    { id:'k20', label:'ラップ・ホイル類：ストック確認', note:'⚠️ ストック無くなりそうなとき連絡', warn:true },
+    { id:'k21', label:'鍋類：汚れチェック・洗う・水切り', note:'◎汚れチェック ◎汚れてたら洗う ◎水を切って戻す' },
+    { id:'k22', label:'ゴミ：回収・袋セット', note:'◎回収 ◎袋セット' },
+    { id:'k23', label:'電気コンロ：汚れを拭く・下も確認', note:'◎汚れふく ◎下汚れも確認' },
+    { id:'k24', label:'バス用スポンジ：新品に交換', note:'キッチン上の棚にあります' },
+    { id:'k25', label:'洗濯機：ゴミを取る', note:'◎ゴミを取る' },
+    { id:'k26', label:'洗剤残量チェック', note:'⚠️ 無くなりそうな時連絡', warn:true },
+  ]},
+  { id:'toilet', area:'トイレ・洗面所', emoji:'🚽', items:[
+    { id:'t1', label:'トイレ：磨く', note:'◎磨く' },
+    { id:'t2', label:'トイレ：ゴミ捨て→袋かける', note:'◎ゴミ捨て→袋かける' },
+    { id:'t3', label:'トイレットペーパー：2つ補充', note:'1Fストックにあります' },
+    { id:'t4', label:'トイレ：タオル交換→洗濯', note:'◎タオル交換→洗濯' },
+    { id:'t5', label:'洗面所：床掃除', note:'◎床掃除' },
+    { id:'t6', label:'洗面所：シンク磨く', note:'◎シンク磨く' },
+    { id:'t7', label:'洗面所：コップ洗う', note:'◎コップ洗う' },
+    { id:'t8', label:'洗面所：歯磨き8個補充', note:'2Fストック下にあります' },
+    { id:'t9', label:'洗面所：足拭きマット交換→洗濯', note:'2Fストック下にあります' },
+    { id:'t10', label:'洗面所：ティッシュ残確認', note:'◎ティッシュ残確認' },
+    { id:'t11', label:'シンク下：ドライヤー/アイロン汚れ確認・拭く', note:'◎ドライヤー／アイロン 汚れ確認・拭く' },
+  ]},
+  { id:'bath', area:'風呂', emoji:'🛁', items:[
+    { id:'b1', label:'風呂釜を洗う', note:'◎風呂釜洗う' },
+    { id:'b2', label:'排水溝：髪の毛を取る', note:'◎髪の毛取る' },
+    { id:'b3', label:'排水溝：洗う', note:'◎洗う' },
+    { id:'b4', label:'椅子を洗う', note:'◎洗う' },
+    { id:'b5', label:'シャンプー類：底のぬめり取り', note:'◎底のぬめり取り' },
+    { id:'b6', label:'シャンプー類：切れそうな時補充', note:'⚠️ ストック無くなりそうなとき連絡', warn:true },
+  ]},
+  { id:'living', area:'ダイニング・リビング', emoji:'🛋️', items:[
+    { id:'l1', label:'床：掃除機をかける', note:'⚠️ 特に髪の毛に注意', warn:true },
+    { id:'l2', label:'テーブル：拭く（ダイニングのセンタに戻す）', note:'◎拭く' },
+    { id:'l3', label:'サブ椅子：7.5畳押入れ側に2つ寄せる', note:'2つとも7.5畳押入れ側に寄せておく' },
+    { id:'l4', label:'6畳押入れ上：ティッシュ2・トイレットペーパー2・電池など補充', note:'無くなっているもの補充' },
+    { id:'l5', label:'6畳押入れ下：掃除機・ゴミ確認→捨てる', note:'◎掃除機 ゴミ確認→捨てる' },
+    { id:'l6', label:'コロコロ：汚れ紙を捨てる', note:'◎コロコロ 汚れ紙捨てる' },
+    { id:'l7', label:'飾り物の確認・撮影', note:'⚠️ 無くなっているものがないか確認・写真撮影', warn:true },
+  ]},
+  { id:'bedroom', area:'寝室1・寝室2・和室3', emoji:'🛏️', items:[
+    { id:'s1', label:'床：モップがけ（ベッド下も）', note:'⚠️ 落ちているもの・特に髪の毛に注意', warn:true },
+    { id:'s2', label:'寝具/タオル：洗う・交換', note:'タオル類2セット（2Fストック）' },
+    { id:'s3', label:'コロコロがけ', note:'⚠️ 特に髪の毛に注意', warn:true },
+    { id:'s4', label:'机：拭く', note:'◎拭く' },
+    { id:'s5', label:'押入れ・ゴミ箱：毛布確認・忘れ物確認', note:'◎毛布確認 ◎忘れ物確認' },
+    { id:'s6', label:'ゴミ捨て→袋かけ', note:'◎ゴミ捨て→袋かけ' },
+    { id:'s7', label:'物品：無くなっているものないか確認・撮影', note:'⚠️ 写真撮影', warn:true },
+  ]},
+  { id:'waroom', area:'和室3（ふとん）', emoji:'🏮', items:[
+    { id:'w1', label:'床：ふとんをあげて掃除機', note:'⚠️ 特に髪の毛に注意', warn:true },
+    { id:'w2', label:'寝具/タオル：洗う・交換', note:'タオル類2セット（2Fストックにあります）' },
+    { id:'w3', label:'コロコロがけ', note:'⚠️ 特に髪の毛に注意', warn:true },
+    { id:'w4', label:'ゴミ箱：ゴミ捨て→袋かけ', note:'◎ゴミ捨て→袋かけ' },
+  ]},
+  { id:'final', area:'最終確認・施錠', emoji:'🔐', items:[
+    { id:'f1', label:'1Fストック確認（水・TP・ティッシュ・電池）', note:'1F キッチン側押入れ' },
+    { id:'f2', label:'物品全体確認・撮影', note:'⚠️ 無くなっているものないか写真撮影', warn:true },
+    { id:'f3', label:'施錠（解除）：①321に合わせる→②ボタン押しながら線を抜く', note:'鍵の施錠を確認' },
+    { id:'f4', label:'施錠（施錠）：①ボタン押しながら線を奥まで戻す→②数字をずらす', note:'最後に数字をずらすこと' },
+  ]},
+];
+
+const STOCKS = [
+  { id:'st1', name:'水（ペットボトル）', loc:'1F/7.5畳押入れ' },
+  { id:'st2', name:'トイレットペーパー', loc:'1Fストック' },
+  { id:'st3', name:'ティッシュ', loc:'6畳押入れ上' },
+  { id:'st4', name:'電池', loc:'6畳押入れ上' },
+  { id:'st5', name:'シャンプー・ボディソープ類', loc:'2Fストック' },
+  { id:'st6', name:'調味料', loc:'キッチン' },
+  { id:'st7', name:'ラップ・アルミホイル', loc:'キッチン引き出し' },
+  { id:'st8', name:'洗濯洗剤', loc:'洗濯機横' },
+  { id:'st9', name:'歯磨き', loc:'2Fストック下' },
+  { id:'st10', name:'水切りネット・スポンジ', loc:'上の棚' },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  checks: {},
+  photos: [],
+  stocks: {},
+  billing: [
+    { name:'清掃基本料金', qty:1, price:8000 },
+    { name:'リネン交換', qty:1, price:1500 },
+  ],
+  currentPhotoSlot: null,
+};
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = () => {
+  buildChecklist();
+  buildPhotoGrid();
+  buildStockList();
+  buildBillingList();
+  document.getElementById('cleaningDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('invoiceNo').value = 'INV-' + Date.now().toString().slice(-6);
+  updateProgress();
+  setTimeout(() => renderPreview('report'), 100);
+};
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(idx) {
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+  if(idx===3) updateBillingTotal();
+  if(idx===4) renderPreview('report');
+  document.querySelector('.main').scrollTop = 0;
+}
+
+// ============================================================
+// CHECKLIST BUILD
+// ============================================================
+function buildChecklist() {
+  const container = document.getElementById('checklistContainer');
+  container.innerHTML = '';
+  CHECKLIST.forEach(section => {
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'area-header';
+    hdr.id = 'hdr-' + section.id;
+    hdr.innerHTML = `
+      <div class="area-header-left">
+        <span class="area-emoji">${section.emoji}</span>
+        <div>
+          <div class="area-name">${section.area}</div>
+          <div class="area-count" id="cnt-${section.id}">0 / ${section.items.length}</div>
+        </div>
+      </div>
+      <span class="area-chevron">▶</span>
+    `;
+    hdr.onclick = () => toggleArea(section.id);
+    container.appendChild(hdr);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'area-body';
+    body.id = 'body-' + section.id;
+    section.items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'check-item' + (item.warn ? ' warn-item' : '');
+      div.id = 'ci-' + item.id;
+      div.innerHTML = `
+        <div class="check-box ${state.checks[item.id]?.done ? 'checked':''}" onclick="toggleCheck('${item.id}', this)" id="cb-${item.id}"></div>
+        <div class="check-content">
+          <div class="check-label">${item.label}</div>
+          <div class="check-note ${item.warn ? 'warn-note' : ''}">
+            ${item.warn ? '⚠️' : '📌'} ${item.note}
+          </div>
+          <div class="check-status-row">
+            <button class="status-btn ${state.checks[item.id]?.status==='ok'?'active-ok':''}" onclick="setStatus('${item.id}','ok',this)">✅ OK</button>
+            <button class="status-btn ${state.checks[item.id]?.status==='ng'?'active-ng':''}" onclick="setStatus('${item.id}','ng',this)">⚠️ 要注意</button>
+            <button class="status-btn ${state.checks[item.id]?.status==='skip'?'active-skip':''}" onclick="setStatus('${item.id}','skip',this)">— 対象外</button>
+          </div>
+        </div>
+      `;
+      body.appendChild(div);
+    });
+    container.appendChild(body);
+  });
+  updateProgress();
+}
+
+function toggleArea(id) {
+  const hdr = document.getElementById('hdr-' + id);
+  const body = document.getElementById('body-' + id);
+  hdr.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+function toggleCheck(id, box) {
+  if(!state.checks[id]) state.checks[id] = {};
+  state.checks[id].done = !state.checks[id].done;
+  box.classList.toggle('checked', state.checks[id].done);
+  updateProgress();
+}
+
+function setStatus(id, val, btn) {
+  if(!state.checks[id]) state.checks[id] = {};
+  const prev = state.checks[id].status;
+  state.checks[id].status = prev === val ? '' : val;
+  if(state.checks[id].status) {
+    state.checks[id].done = true;
+    document.getElementById('cb-'+id).classList.add('checked');
+  }
+  // Update buttons
+  const row = btn.closest('.check-status-row');
+  row.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active-ok','active-ng','active-skip'));
+  if(state.checks[id].status === 'ok') row.querySelectorAll('.status-btn')[0].classList.add('active-ok');
+  if(state.checks[id].status === 'ng') row.querySelectorAll('.status-btn')[1].classList.add('active-ng');
+  if(state.checks[id].status === 'skip') row.querySelectorAll('.status-btn')[2].classList.add('active-skip');
+  updateProgress();
+}
+
+function updateProgress() {
+  let total=0, done=0;
+  CHECKLIST.forEach(s => s.items.forEach(item => {
+    total++;
+    if(state.checks[item.id]?.done || state.checks[item.id]?.status) done++;
+  }));
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${done} / ${total} 完了 (${pct}%)`;
+  document.getElementById('hdrDone').textContent = done;
+  document.getElementById('hdrTotal').textContent = total;
+
+  // Update area counts
+  CHECKLIST.forEach(s => {
+    let aDone = 0;
+    s.items.forEach(item => { if(state.checks[item.id]?.done || state.checks[item.id]?.status) aDone++; });
+    const cnt = document.getElementById('cnt-'+s.id);
+    if(cnt) cnt.textContent = `${aDone} / ${s.items.length}`;
+    const hdr = document.getElementById('hdr-'+s.id);
+    if(hdr) hdr.classList.toggle('done', aDone === s.items.length);
+  });
+}
+
+// ============================================================
+// PHOTOS
+// ============================================================
+function buildPhotoGrid() {
+  const grid = document.getElementById('photoGrid');
+  grid.innerHTML = '';
+  for(let i=0;i<5;i++){
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-wrap';
+    const p = state.photos[i];
+    if(p){
+      const slot = document.createElement('div');
+      slot.className = 'photo-slot';
+      slot.innerHTML = `<img src="${p.dataUrl}"><button class="photo-remove" onclick="removePhoto(${i},event)">✕</button>`;
+      const inp = document.createElement('input');
+      inp.className = 'photo-label-inp';
+      inp.placeholder = `ラベル ${i+1}`;
+      inp.value = p.label || '';
+      inp.oninput = e => { state.photos[i].label = e.target.value; };
+      wrap.appendChild(slot);
+      wrap.appendChild(inp);
+    } else {
+      const slot = document.createElement('div');
+      slot.className = 'photo-slot';
+      slot.innerHTML = `<div class="photo-slot-icon">📷</div><div class="photo-slot-text">追加</div>`;
+      slot.onclick = () => { state.currentPhotoSlot = i; document.getElementById('photoInput').click(); };
+      const inp = document.createElement('input');
+      inp.className = 'photo-label-inp';
+      inp.placeholder = `ラベル ${i+1}`;
+      inp.disabled = true;
+      wrap.appendChild(slot);
+      wrap.appendChild(inp);
+    }
+    grid.appendChild(wrap);
+  }
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.photos[state.currentPhotoSlot] = { dataUrl: ev.target.result, label:'' };
+    buildPhotoGrid();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function removePhoto(i, e) {
+  e.stopPropagation();
+  state.photos[i] = null;
+  // compact
+  state.photos = state.photos.filter(Boolean);
+  buildPhotoGrid();
+}
+
+// ============================================================
+// STOCKS
+// ============================================================
+function buildStockList() {
+  const el = document.getElementById('stockList');
+  el.innerHTML = '';
+  STOCKS.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'stock-row';
+    row.innerHTML = `
+      <div>
+        <div class="stock-name">${s.name}</div>
+        <div class="stock-loc">📍 ${s.loc}</div>
+      </div>
+      <div class="stock-check ${state.stocks[s.id]||''}" id="stk-${s.id}" onclick="toggleStock('${s.id}', this)"></div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function toggleStock(id, el) {
+  const cur = state.stocks[id] || '';
+  const next = cur === '' ? 'ok' : cur === 'ok' ? 'ng' : '';
+  state.stocks[id] = next;
+  el.className = 'stock-check ' + next;
+}
+
+// ============================================================
+// BILLING
+// ============================================================
+function buildBillingList() {
+  const list = document.getElementById('billingList');
+  list.innerHTML = '';
+  state.billing.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'bill-item';
+    div.innerHTML = `
+      <input class="bill-item-name" type="text" value="${item.name}" placeholder="項目名" onchange="updateBilling(${i},'name',this.value)">
+      <div class="bill-item-row">
+        <span class="bill-unit-label">数量</span>
+        <input class="bill-num-inp" type="number" min="1" value="${item.qty}" onchange="updateBilling(${i},'qty',this.value)" style="width:56px;">
+        <span class="bill-unit-label">単価 ¥</span>
+        <input class="bill-price-inp" type="number" min="0" value="${item.price}" onchange="updateBilling(${i},'price',this.value)">
+        <span class="bill-amount" id="ba-${i}">¥${(item.qty*item.price).toLocaleString()}</span>
+        <button class="bill-del-btn" onclick="removeBilling(${i})">🗑</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+  updateBillingTotal();
+}
+
+function updateBilling(i, key, val) {
+  state.billing[i][key] = key==='name' ? val : Number(val);
+  const el = document.getElementById('ba-'+i);
+  if(el) el.textContent = '¥' + (state.billing[i].qty * state.billing[i].price).toLocaleString();
+  updateBillingTotal();
+}
+
+function addBillingItem() {
+  state.billing.push({ name:'', qty:1, price:0 });
+  buildBillingList();
+}
+
+function removeBilling(i) {
+  state.billing.splice(i,1);
+  buildBillingList();
+}
+
+function updateBillingTotal() {
+  const sub = state.billing.reduce((a,b) => a + b.qty*b.price, 0);
+  const tax = Math.round(sub*0.1);
+  const total = sub + tax;
+  document.getElementById('subtotalDisplay').textContent = '¥'+sub.toLocaleString();
+  document.getElementById('taxDisplay').textContent = '¥'+tax.toLocaleString();
+  document.getElementById('totalDisplay').textContent = '¥'+total.toLocaleString();
+  return {sub,tax,total};
+}
+
+function saveData() {}
+
+// ============================================================
+// HELPER
+// ============================================================
+function g(id){ return document.getElementById(id)?.value || ''; }
+
+// ============================================================
+// PREVIEW
+// ============================================================
+function renderPreview(type) {
+  document.getElementById('prevR').classList.toggle('active', type==='report');
+  document.getElementById('prevI').classList.toggle('active', type==='invoice');
+  const area = document.getElementById('previewArea');
+  const {sub,tax,total} = updateBillingTotal();
+
+  if(type==='report'){
+    let checksHtml = '';
+    CHECKLIST.forEach(s => {
+      checksHtml += `<tr style="background:#f0f0f0"><td colspan="3" style="padding:5px 8px;font-size:10px;font-weight:700;">${s.emoji} ${s.area}</td></tr>`;
+      s.items.forEach(item => {
+        const c = state.checks[item.id];
+        const status = c?.status==='ok'?'✅':c?.status==='ng'?'⚠️':c?.status==='skip'?'—':c?.done?'✅':'□';
+        checksHtml += `<tr><td style="padding:4px 8px;border:1px solid #eee;font-size:11px;">${item.label}</td><td style="padding:4px 8px;border:1px solid #eee;text-align:center;">${status}</td><td style="padding:4px 8px;border:1px solid #eee;font-size:10px;color:#888;">${c?.status==='ng'?'要注意':''}</td></tr>`;
+      });
+    });
+    let photosHtml = state.photos.filter(Boolean).map(p =>
+      `<div style="text-align:center;"><img class="pv-photo" src="${p.dataUrl}"><div style="font-size:10px;color:#666;margin-top:3px;">${p.label||''}</div></div>`
+    ).join('');
+
+    area.innerHTML = `
+      <div class="pv-header">
+        <div class="pv-title">清掃業務報告書</div>
+        <div class="pv-meta">
+          清掃日: ${g('cleaningDate')} | 物件: ${g('propertyName')}<br>
+          スタッフ: ${g('staffName')} | 時間: ${g('startTime')}〜${g('endTime')}
+        </div>
+      </div>
+      <div class="pv-sec">
+        <div class="pv-sec-title">チェックリスト</div>
+        <table class="pv-table"><thead><tr><th>項目</th><th style="width:40px">状態</th><th style="width:50px">備考</th></tr></thead><tbody>${checksHtml}</tbody></table>
+      </div>
+      ${photosHtml ? `<div class="pv-sec"><div class="pv-sec-title">報告写真</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${photosHtml}</div></div>`:''}
+      ${g('notes') ? `<div class="pv-sec"><div class="pv-sec-title">特記事項</div><p style="font-size:12px;line-height:1.7;background:#f9f9f9;padding:10px;border-radius:6px;">${g('notes')}</p></div>`:''}
+    `;
+  } else {
+    let itemsHtml = state.billing.map(b => `
+      <tr>
+        <td style="padding:6px 8px;border:1px solid #eee;font-size:12px;">${b.name}</td>
+        <td style="padding:6px 8px;border:1px solid #eee;text-align:center;font-size:12px;">${b.qty}</td>
+        <td style="padding:6px 8px;border:1px solid #eee;text-align:right;font-size:12px;">¥${b.price.toLocaleString()}</td>
+        <td style="padding:6px 8px;border:1px solid #eee;text-align:right;font-size:12px;">¥${(b.qty*b.price).toLocaleString()}</td>
+      </tr>`).join('');
+    area.innerHTML = `
+      <div class="pv-header">
+        <div class="pv-title">請求書</div>
+        <div class="pv-meta">
+          ${g('invoiceNo')} | 発行日: ${new Date().toLocaleDateString('ja-JP')}<br>
+          支払期限: ${g('paymentDue')} | 発行: ${g('companyName')}
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;color:#888;">請求先</div>
+        <div style="font-size:16px;font-weight:700;">${g('invoiceTo')||g('clientName')}</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">件名: ${g('propertyName')} 清掃業務（${g('cleaningDate')}）</div>
+      </div>
+      <div class="pv-sec">
+        <div class="pv-sec-title">明細</div>
+        <table class="pv-table"><thead><tr><th>項目</th><th style="width:35px;text-align:center;">数量</th><th style="width:60px;text-align:right;">単価</th><th style="width:65px;text-align:right;">金額</th></tr></thead><tbody>${itemsHtml}</tbody></table>
+      </div>
+      <div class="pv-total">
+        <div style="font-size:12px;color:#888;">小計: ¥${sub.toLocaleString()} / 消費税: ¥${tax.toLocaleString()}</div>
+        <div class="pv-total-num">合計 ¥${total.toLocaleString()}</div>
+      </div>
+      ${g('bankName') ? `<div style="background:#f5f5f5;border-radius:6px;padding:12px;margin-top:12px;font-size:12px;line-height:1.8;"><strong>振込先</strong><br>${g('bankName')}<br>口座: ${g('bankAccount')}<br>名義: ${g('bankHolder')}</div>`:'' }
+    `;
+  }
+}
+
+// ============================================================
+// PDF
+// ============================================================
+async function downloadPDF(type) {
+  renderPreview(type);
+  await new Promise(r=>setTimeout(r,200));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
+  const {sub,tax,total} = updateBillingTotal();
+  const isReport = type==='report';
+
+  doc.setFont('helvetica');
+  doc.setFontSize(20);
+  doc.setTextColor(20,20,20);
+  doc.text(isReport ? '清掃業務報告書' : '請求書', 20, 24);
+  doc.setFontSize(9);
+  doc.setTextColor(100,100,100);
+  if(isReport){
+    doc.text([
+      '物件: ' + g('propertyName'),
+      '清掃日: ' + g('cleaningDate'),
+      'スタッフ: ' + g('staffName'),
+      '時間: ' + g('startTime') + ' - ' + g('endTime'),
+    ], 190, 14, {align:'right'});
+  } else {
+    doc.text([
+      g('invoiceNo'),
+      '発行日: ' + new Date().toLocaleDateString('ja-JP'),
+      '支払期限: ' + g('paymentDue'),
+      g('companyName'),
+    ], 190, 14, {align:'right'});
+  }
+  doc.setLineWidth(0.6);
+  doc.setDrawColor(20,20,20);
+  doc.line(20, 30, 190, 30);
+  let y = 38;
+
+  if(isReport){
+    CHECKLIST.forEach(section => {
+      if(y > 265) { doc.addPage(); y = 20; }
+      doc.setFillColor(30,30,30);
+      doc.rect(20, y-4, 170, 7, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(8);
+      doc.text(section.area, 23, y+0.5);
+      y += 9;
+      section.items.forEach(item => {
+        if(y > 272) { doc.addPage(); y = 20; }
+        const c = state.checks[item.id];
+        const st = c?.status==='ok'?'[OK]':c?.status==='ng'?'[!]':c?.status==='skip'?'[-]':c?.done?'[v]':'[ ]';
+        doc.setFontSize(8);
+        doc.setTextColor(40,40,40);
+        doc.text(st + ' ' + item.label, 23, y);
+        if(c?.status==='ng'){
+          doc.setTextColor(200,80,80);
+          doc.text('要注意', 175, y, {align:'right'});
+        }
+        y += 6.5;
+      });
+      y += 2;
+    });
+
+    // Photos
+    const validPhotos = state.photos.filter(Boolean);
+    if(validPhotos.length > 0){
+      if(y > 240) { doc.addPage(); y = 20; }
+      doc.setFillColor(30,30,30);
+      doc.rect(20, y-4, 170, 7, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(8);
+      doc.text('報告写真', 23, y+0.5);
+      y += 12;
+      let px = 20;
+      for(let p of validPhotos){
+        if(px + 52 > 190) { px = 20; y += 48; }
+        if(y > 240) { doc.addPage(); px = 20; y = 20; }
+        try { doc.addImage(p.dataUrl, 'JPEG', px, y, 44, 36); } catch(e){}
+        if(p.label){ doc.setFontSize(7); doc.setTextColor(80,80,80); doc.text(p.label, px+22, y+39, {align:'center'}); }
+        px += 50;
+      }
+      y += 50;
+    }
+
+    if(g('notes')){
+      if(y>255) { doc.addPage(); y=20; }
+      doc.setFillColor(30,30,30);
+      doc.rect(20, y-4, 170, 7, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(8);
+      doc.text('特記事項', 23, y+0.5);
+      y += 10;
+      doc.setTextColor(40,40,40);
+      const lines = doc.splitTextToSize(g('notes'), 165);
+      doc.text(lines, 23, y);
+    }
+  } else {
+    // INVOICE
+    doc.setFontSize(13);
+    doc.setTextColor(30,30,30);
+    doc.text((g('invoiceTo')||g('clientName')) + ' 御中', 20, y);
+    y += 8;
+    doc.setFontSize(9);
+    doc.setTextColor(100,100,100);
+    doc.text('件名: ' + g('propertyName') + ' 清掃業務（' + g('cleaningDate') + '）', 20, y);
+    y += 12;
+    doc.setFillColor(30,30,30);
+    doc.rect(20, y-4, 170, 8, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(8);
+    ['項目','数量','単価','金額'].forEach((t,i) => doc.text(t, [23,120,145,170][i], y+0.5));
+    y += 10;
+    state.billing.forEach(item => {
+      doc.setTextColor(40,40,40);
+      doc.setFontSize(9);
+      doc.text(item.name, 23, y);
+      doc.text(String(item.qty), 122, y, {align:'center'});
+      doc.text('¥'+item.price.toLocaleString(), 158, y, {align:'right'});
+      doc.text('¥'+(item.qty*item.price).toLocaleString(), 188, y, {align:'right'});
+      doc.setDrawColor(220,220,220);
+      doc.line(20, y+3, 190, y+3);
+      y += 9;
+    });
+    y += 4;
+    doc.setFontSize(9); doc.setTextColor(100,100,100);
+    doc.text('小計', 140, y); doc.text('¥'+sub.toLocaleString(), 188, y, {align:'right'}); y += 7;
+    doc.text('消費税（10%）', 130, y); doc.text('¥'+tax.toLocaleString(), 188, y, {align:'right'}); y += 5;
+    doc.setLineWidth(0.6); doc.setDrawColor(30,30,30); doc.line(120, y, 190, y); y += 7;
+    doc.setFontSize(12); doc.setTextColor(30,30,30); doc.setFont('helvetica','bold');
+    doc.text('合計（税込）', 120, y);
+    doc.text('¥'+total.toLocaleString(), 188, y, {align:'right'});
+    doc.setFont('helvetica','normal');
+    y += 16;
+    if(g('bankName')){
+      doc.setFillColor(248,248,248); doc.rect(20, y-5, 170, 26, 'F');
+      doc.setFontSize(8); doc.setTextColor(80,80,80);
+      doc.text('【振込先】', 23, y); y += 7;
+      doc.text(g('bankName'), 23, y); y += 6;
+      doc.text('口座番号: '+g('bankAccount'), 23, y); y += 6;
+      doc.text('口座名義: '+g('bankHolder'), 23, y);
+    }
+  }
+
+  const fn = isReport
+    ? `清掃報告書_${g('propertyName')}_${g('cleaningDate')}.pdf`
+    : `請求書_${g('propertyName')}_${g('cleaningDate')}.pdf`;
+  doc.save(fn);
+  showToast('✅ ' + (isReport?'報告書':'請求書') + ' PDFを保存しました');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
